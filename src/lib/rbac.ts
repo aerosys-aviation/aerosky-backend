@@ -77,7 +77,7 @@ const RESOURCE_PERMISSION_MAP: Record<string, Record<ResourceAction, Permission>
         view: PERMISSIONS.INVENTORY_VIEW,
         create: PERMISSIONS.INVENTORY_MANAGE,
         edit: PERMISSIONS.INVENTORY_IN,
-        delete: PERMISSIONS.INVENTORY_OUT, // Mapping loosely here or I can extend rbac actions
+        delete: PERMISSIONS.INVENTORY_OUT,
     },
     component: {
         view: PERMISSIONS.INVENTORY_VIEW,
@@ -156,32 +156,50 @@ export async function createAuditLog(data: AuditLogData): Promise<void> {
 // ROLE UTILITIES
 // ============================================
 
+// Complete display name mapping for all roles in the system
+const ROLE_DISPLAY_NAMES: Record<Role, string> = {
+    SUPER_ADMIN: 'Super Admin',
+    ADMIN: 'Admin',
+    OPERATIONS_MANAGER: 'Operations Manager',
+    QA_MANAGER: 'QA Manager',
+    PILOT: 'Pilot',
+    TECHNICIAN: 'Technician',
+    VIEWER: 'Viewer',
+    MANUFACTURING: 'Manufacturing',
+    DESIGN: 'Design',
+    SALES: 'Sales',
+    SOFTWARE: 'Software',
+    ADMINISTRATION: 'Administration',
+};
+
 /**
  * Get human-readable role name
  */
 export function getRoleDisplayName(role: Role): string {
-    const displayNames: any = {
-        ADMINISTRATION: 'Administration',
-        MANUFACTURING: 'Manufacturing',
-        DESIGN: 'Design',
-        SALES: 'Sales',
-        SOFTWARE: 'Software',
-    };
-    return displayNames[role] || role;
+    return ROLE_DISPLAY_NAMES[role] || role;
 }
+
+// Complete role hierarchy levels
+const ROLE_LEVELS: Record<Role, number> = {
+    SUPER_ADMIN: 150,
+    ADMIN: 100,
+    ADMINISTRATION: 100,
+    OPERATIONS_MANAGER: 75,
+    QA_MANAGER: 75,
+    MANUFACTURING: 50,
+    DESIGN: 50,
+    SALES: 50,
+    SOFTWARE: 50,
+    PILOT: 40,
+    TECHNICIAN: 40,
+    VIEWER: 10,
+};
 
 /**
  * Get role hierarchy level (higher = more permissions)
  */
 export function getRoleLevel(role: Role): number {
-    const levels: any = {
-        ADMINISTRATION: 100,
-        MANUFACTURING: 50,
-        DESIGN: 50,
-        SALES: 50,
-        SOFTWARE: 50,
-    };
-    return levels[role] || 0;
+    return ROLE_LEVELS[role] || 0;
 }
 
 /**

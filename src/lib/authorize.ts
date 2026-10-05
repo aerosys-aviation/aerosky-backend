@@ -1,16 +1,11 @@
 // Authorization middleware for API routes
-import { Role } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { Permission } from './permissions';
 import { canAccess, createAuditLog, hasPermission } from './rbac';
+import type { AuthenticatedUser } from '@/types/auth';
 
-// Type for authenticated user from api-auth
-export interface AuthenticatedUser {
-    id: string;
-    username: string;
-    role: Role;
-    email?: string;
-}
+// Re-export the shared type for backward compatibility
+export type { AuthenticatedUser };
 
 /**
  * Create a response for unauthorized access

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 export class ApiError extends Error {
   constructor(
     public code: string,
@@ -62,14 +64,17 @@ export function handleError(error: unknown) {
     }
   }
 
-  // Log unexpected errors
+  // Log unexpected errors server-side
   console.error('Unhandled error:', error);
 
+  // Never leak stack traces or internal error messages to clients in production
   return NextResponse.json(
     {
       error: 'INTERNAL_ERROR',
       message: 'An unexpected error occurred',
-      details: error instanceof Error ? { msg: error.message, stack: error.stack } : String(error)
+      ...(!IS_PRODUCTION && error instanceof Error && {
+        details: { msg: error.message }
+      }),
     },
     { status: 500 }
   );

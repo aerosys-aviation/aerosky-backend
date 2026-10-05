@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/api-auth";
 import { checkResourceAccess } from "@/lib/authorize";
+import { createDroneSchema } from "@/lib/schemas";
 
 // GET all drones with uploads
 export async function GET(request: NextRequest) {
@@ -16,10 +17,8 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const includeUploads = searchParams.get('includeUploads') === 'true';
-        const where: any = {};
-        
+
         const drones = await prisma.drone.findMany({
-            where,
             include: {
                 uploads: includeUploads,
                 accountableManager: true,
@@ -29,28 +28,28 @@ export async function GET(request: NextRequest) {
         });
 
         // Transform uploads to match frontend format
-        const transformedDrones = drones.map((drone: any) => {
+        const transformedDrones = drones.map((drone) => {
             const uploads = includeUploads && drone.uploads ? {
-                trainingManual: drone.uploads.find((u: any) => u.uploadType === "training_manual")?.fileData,
+                trainingManual: drone.uploads.find((u) => u.uploadType === "training_manual")?.fileData,
                 infrastructureManufacturing: drone.uploads
-                    .filter((u: any) => u.uploadType === "infrastructure_manufacturing")
-                    .map((u: any) => u.fileData),
+                    .filter((u) => u.uploadType === "infrastructure_manufacturing")
+                    .map((u) => u.fileData),
                 infrastructureTesting: drone.uploads
-                    .filter((u: any) => u.uploadType === "infrastructure_testing")
-                    .map((u: any) => u.fileData),
+                    .filter((u) => u.uploadType === "infrastructure_testing")
+                    .map((u) => u.fileData),
                 infrastructureOffice: drone.uploads
-                    .filter((u: any) => u.uploadType === "infrastructure_office")
-                    .map((u: any) => u.fileData),
+                    .filter((u) => u.uploadType === "infrastructure_office")
+                    .map((u) => u.fileData),
                 infrastructureOthers: drone.uploads
-                    .filter((u: any) => u.uploadType === "infrastructure_others")
-                    .map((u: any) => ({ label: u.label || "", image: u.fileData })),
+                    .filter((u) => u.uploadType === "infrastructure_others")
+                    .map((u) => ({ label: u.label || "", image: u.fileData })),
                 regulatoryDisplay: drone.uploads
-                    .filter((u: any) => u.uploadType === "regulatory_display")
-                    .map((u: any) => u.fileData),
-                systemDesign: drone.uploads.find((u: any) => u.uploadType === "system_design")?.fileData,
+                    .filter((u) => u.uploadType === "regulatory_display")
+                    .map((u) => u.fileData),
+                systemDesign: drone.uploads.find((u) => u.uploadType === "system_design")?.fileData,
                 hardwareSecurity: drone.uploads
-                    .filter((u: any) => u.uploadType === "hardware_security")
-                    .map((u: any) => u.fileData),
+                    .filter((u) => u.uploadType === "hardware_security")
+                    .map((u) => u.fileData),
                 webPortalLink: drone.webPortalLink,
             } : {
                 webPortalLink: drone.webPortalLink,
@@ -59,12 +58,11 @@ export async function GET(request: NextRequest) {
             return {
                 id: drone.id,
                 modelName: drone.modelName,
-                // uin: drone.uin, // Removed
                 image: drone.image,
                 accountableManagerId: drone.accountableManagerId,
                 createdAt: drone.createdAt.toISOString(),
                 uploads,
-                manufacturedUnits: drone.manufacturedUnits.map((u: any) => ({
+                manufacturedUnits: drone.manufacturedUnits.map((u) => ({
                     serialNumber: u.serialNumber,
                     uin: u.uin,
                 })),
@@ -91,16 +89,22 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        // Remove uin from top level
-        const { modelName, image, manufacturedUnits } = body;
+        const validation = createDroneSchema.safeParse(body);
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: "Validation failed", details: validation.error.format() },
+                { status: 400 }
+            );
+        }
+
+        const { modelName, image, manufacturedUnits } = validation.data;
 
         const drone = await prisma.drone.create({
             data: {
                 modelName,
-                // uin, // Removed
-                image,
+                image: image || null,
                 manufacturedUnits: {
-                    create: (manufacturedUnits || []).map((unit: any) => ({
+                    create: (manufacturedUnits || []).map((unit) => ({
                         serialNumber: unit.serialNumber,
                         uin: unit.uin,
                     })),
@@ -114,11 +118,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             id: drone.id,
             modelName: drone.modelName,
-            // uin: drone.uin,
             image: drone.image,
             accountableManagerId: drone.accountableManagerId,
             createdAt: drone.createdAt.toISOString(),
-            manufacturedUnits: drone.manufacturedUnits.map((u: any) => ({
+            manufacturedUnits: drone.manufacturedUnits.map((u) => ({
                 serialNumber: u.serialNumber,
                 uin: u.uin,
             })),

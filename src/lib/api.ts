@@ -4,12 +4,38 @@ export const api = axios.create({
     baseURL: '/api',
 });
 
+export interface RegisterPayload {
+    email: string;
+    password: string;
+    full_name: string;
+}
+
+export interface DroneRecord {
+    id: string;
+    modelName: string;
+    image?: string | null;
+    accountableManagerId?: string | null;
+    createdAt?: string;
+    uploads?: Record<string, unknown>;
+    manufacturedUnits?: Array<{ serialNumber: string; uin: string }>;
+    recurringData?: unknown;
+}
+
+export interface TeamMemberPayload {
+    full_name: string;
+    category_rating?: string;
+    position?: string;
+    phone?: string;
+    primary_id_number?: string;
+    email: string;
+}
+
 // Auth API
 export const authApi = {
-    login: async (email: string, password: string) => {
+    login: async (_email: string, _password: string) => {
         return { message: "Use next-auth signIn instead" };
     },
-    register: async (data: any) => {
+    register: async (data: RegisterPayload) => {
         const response = await axios.post('/api/auth/register', data);
         return response.data;
     },
@@ -21,21 +47,21 @@ export const authApi = {
 
 // Drones API
 export const dronesApi = {
-    list: async (params?: any) => {
+    list: async (params?: Record<string, unknown>) => {
         try {
             const res = await axios.get('/api/drones', { params });
-            const items = Array.isArray(res.data) ? res.data : (res.data?.items || []);
+            const items: DroneRecord[] = Array.isArray(res.data) ? res.data : (res.data?.items || []);
             return { data: { total: items.length, items } };
         } catch {
-            return { data: { total: 0, items: [] } };
+            return { data: { total: 0, items: [] as DroneRecord[] } };
         }
     },
     listModels: async () => {
         try {
             const res = await axios.get('/api/drones');
-            const items = Array.isArray(res.data) ? res.data : [];
+            const items: DroneRecord[] = Array.isArray(res.data) ? res.data : [];
             return {
-                data: items.map((d: any) => ({
+                data: items.map((d) => ({
                     id: d.id,
                     model_name: d.modelName,
                     model_number: d.id,
@@ -49,7 +75,7 @@ export const dronesApi = {
             return { data: [] };
         }
     },
-    createModel: async (data: any) => {
+    createModel: async (data: Record<string, unknown>) => {
         const res = await axios.post('/api/drones', data);
         return { data: res.data };
     },
@@ -57,30 +83,30 @@ export const dronesApi = {
         const res = await axios.get(`/api/drones/${id}`);
         return { data: res.data };
     },
-    create: async (data: any) => {
+    create: async (data: Record<string, unknown>) => {
         const res = await axios.post('/api/drones', data);
         return { data: res.data };
     },
-    update: async (id: string, data: any) => {
+    update: async (id: string, data: Record<string, unknown>) => {
         const res = await axios.put(`/api/drones/${id}`, data);
         return { data: res.data };
     },
-    generateUin: async (data: any) => {
+    generateUin: async (_data: Record<string, unknown>) => {
         return { data: { success: true, uin: `UIN-${Date.now()}` } };
     },
-    activate: async (id: string) => {
+    activate: async (_id: string) => {
         return { data: { status: 'Active' } };
     },
 };
 
 // Pilots API
 export const pilotsApi = {
-    list: async (params?: any) => {
+    list: async (params?: Record<string, unknown>) => {
         try {
             const res = await axios.get('/api/team', { params });
             const list = Array.isArray(res.data) ? res.data : [];
             return {
-                data: list.map((m: any) => ({
+                data: list.map((m: { id: string; name: string; accessId?: string; position?: string }) => ({
                     id: m.id,
                     full_name: m.name,
                     rpto_authorization_number: m.accessId,
@@ -109,10 +135,10 @@ export const pilotsApi = {
             return { data: null };
         }
     },
-    create: async (data: any) => {
+    create: async (data: TeamMemberPayload) => {
         const res = await axios.post('/api/team', {
             name: data.full_name,
-            position: data.category_rating || 'Pilot',
+            position: data.category_rating || data.position || 'Pilot',
             phone: data.phone || data.primary_id_number,
             email: data.email,
         });
@@ -122,44 +148,44 @@ export const pilotsApi = {
 
 // Maintenance API
 export const maintenanceApi = {
-    list: async (params?: any) => {
+    list: async (_params?: Record<string, unknown>) => {
         return { data: [] };
     },
-    create: async (data: any) => {
+    create: async (data: Record<string, unknown>) => {
         return { data: { ...data, id: `log-${Date.now()}` } };
     },
 };
 
 // Flights API
 export const flightsApi = {
-    listPlans: async (params?: any) => {
+    listPlans: async (_params?: Record<string, unknown>) => {
         return { data: { total: 0, items: [] } };
     },
-    getPlan: async (id: string) => {
+    getPlan: async (_id: string) => {
         return { data: null };
     },
-    createPlan: async (data: any) => {
+    createPlan: async (data: Record<string, unknown>) => {
         return { data: { ...data, id: `plan-${Date.now()}` } };
     },
-    updatePlan: async (id: string, data: any) => {
+    updatePlan: async (id: string, data: Record<string, unknown>) => {
         return { data: { ...data, id } };
     },
-    validateNpnt: async (data: any) => {
+    validateNpnt: async (_data: Record<string, unknown>) => {
         return { data: { is_valid: true, checks: [] } };
     },
-    validateZone: async (data: any) => {
+    validateZone: async (_data: Record<string, unknown>) => {
         return { data: { zone_type: 'GREEN', is_flyable: true, message: 'Clear to fly' } };
     },
-    ingestLogs: async (data: any) => {
+    ingestLogs: async (_data: Record<string, unknown>) => {
         return { data: { success: true, entries_processed: 0 } };
     },
-    getSummary: async (planId: string) => {
+    getSummary: async (_planId: string) => {
         return { data: { total_distance_m: 0, max_altitude_m: 0 } };
     },
-    startFlight: async (planId: string) => {
+    startFlight: async (_planId: string) => {
         return { data: { status: 'InProgress' } };
     },
-    completeFlight: async (planId: string) => {
+    completeFlight: async (_planId: string) => {
         return { data: { status: 'Completed' } };
     },
 };

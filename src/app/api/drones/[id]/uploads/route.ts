@@ -148,11 +148,10 @@ export async function POST(
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
-        console.error("Critical: Error uploading files:", error.message);
-        if (error.message?.includes("prisma") || error.message?.includes("client")) {
+        console.error("Critical: Error uploading files:", error?.message);
+        if (error?.message?.includes("prisma") || error?.message?.includes("client")) {
             return NextResponse.json({ 
-                error: "Database configuration error. Please restart your dev server.",
-                details: "A file lock issue is preventing the database from functioning."
+                error: "Database error. Please try again later.",
             }, { status: 500 });
         }
         return NextResponse.json({ error: "Failed to process upload." }, { status: 500 });

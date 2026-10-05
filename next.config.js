@@ -1,17 +1,3 @@
-const ALLOWED_ORIGINS = {
-  development: ['http://localhost:3000', 'http://localhost:3001', 'http://192.168.29.125:3000'],
-  production: [
-    'https://app.aerosysaviation.in',
-    'https://mobile.aerosysaviation.in',
-    'https://dashboard.aerosysaviation.in',
-  ],
-};
-
-const getAllowedOrigins = () => {
-  const env = process.env.NODE_ENV || 'development';
-  return ALLOWED_ORIGINS[env] || ALLOWED_ORIGINS.development;
-};
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
@@ -30,7 +16,6 @@ const nextConfig = {
                     { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT,OPTIONS' },
                     { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
                     { key: 'Access-Control-Max-Age', value: '86400' },
-                    // Remove wildcard CORS - now restricted to allowed origins
                     { key: 'X-Content-Type-Options', value: 'nosniff' },
                     { key: 'X-Frame-Options', value: 'DENY' },
                     { key: 'X-XSS-Protection', value: '1; mode=block' },
@@ -51,4 +36,3 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
-

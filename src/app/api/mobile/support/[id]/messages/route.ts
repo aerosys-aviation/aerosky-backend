@@ -35,10 +35,10 @@ export async function GET(
         });
 
         return NextResponse.json(messages);
-    } catch (error: any) {
+    } catch (error) {
         console.error('Get messages error:', error);
         return NextResponse.json(
-            { error: 'Failed to get messages', details: error.message },
+            { error: 'Failed to get messages' },
             { status: 500 }
         );
     }
@@ -114,10 +114,10 @@ export async function POST(
         console.log('Added message to ticket:', params.id, 'by:', auth.user.username);
 
         return NextResponse.json(result);
-    } catch (error: any) {
+    } catch (error) {
         console.error('Add message error:', error);
         return NextResponse.json(
-            { error: 'Failed to add message', details: error.message },
+            { error: 'Failed to add message' },
             { status: 500 }
         );
     }

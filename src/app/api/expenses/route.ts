@@ -1,6 +1,7 @@
 import { authenticateRequest } from "@/lib/api-auth";
 import { checkResourceAccess } from "@/lib/authorize";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/expenses - Fetch expenses with filtering and pagination
@@ -21,15 +22,15 @@ export async function GET(request: NextRequest) {
         const endDate = searchParams.get('endDate');
         const search = searchParams.get('search');
 
-        const where: any = {};
+        const where: Prisma.ExpenseWhereInput = {};
 
         // Add filters
         if (category) where.category = category;
         if (status) where.status = status;
         if (startDate || endDate) {
             where.date = {};
-            if (startDate) where.date.gte = new Date(startDate);
-            if (endDate) where.date.lte = new Date(endDate);
+            if (startDate) (where.date as Prisma.DateTimeFilter).gte = new Date(startDate);
+            if (endDate) (where.date as Prisma.DateTimeFilter).lte = new Date(endDate);
         }
         if (search) {
             where.description = {
@@ -86,18 +87,16 @@ export async function POST(request: NextRequest) {
                 date: new Date(date),
                 category,
                 paymentMethod: paymentMethod || null,
-                // @ts-ignore - Exists in schema but TS server hasn't updated
                 paymentStatus: paymentStatus || 'unpaid',
                 attachment: attachment || null,
             }
         });
 
         return NextResponse.json(expense, { status: 201 });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Create expense error:', error);
         return NextResponse.json({
             error: "Failed to create expense",
-            details: error.message
         }, { status: 500 });
     }
 }
@@ -118,7 +117,7 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: "Expense ID is required" }, { status: 400 });
         }
 
-        const updateData: any = {};
+        const updateData: Prisma.ExpenseUpdateInput = {};
         if (description !== undefined) updateData.description = description;
         if (amount !== undefined) updateData.amount = parseFloat(amount);
         if (date !== undefined) updateData.date = new Date(date);
@@ -126,7 +125,7 @@ export async function PUT(request: NextRequest) {
         if (paymentMethod !== undefined) updateData.paymentMethod = paymentMethod;
         if (attachment !== undefined) updateData.attachment = attachment;
         if (status !== undefined) updateData.status = status;
-        if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;
+        if (paymentStatus !== undefined) (updateData as any).paymentStatus = paymentStatus;
 
         const expense = await prisma.expense.update({
             where: { id },
@@ -134,11 +133,10 @@ export async function PUT(request: NextRequest) {
         });
 
         return NextResponse.json(expense);
-    } catch (error: any) {
+    } catch (error) {
         console.error('Update expense error:', error);
         return NextResponse.json({
             error: "Failed to update expense",
-            details: error.message
         }, { status: 500 });
     }
 }
@@ -152,7 +150,7 @@ export async function DELETE(request: NextRequest) {
     if (permCheck !== true) return permCheck;
 
     try {
-        const { searchParams } = new URL(request.url);
+        const searchParams = new URL(request.url).searchParams;
         const id = searchParams.get('id');
 
         if (!id) {
@@ -164,11 +162,10 @@ export async function DELETE(request: NextRequest) {
         });
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Delete expense error:', error);
         return NextResponse.json({
             error: "Failed to delete expense",
-            details: error.message
         }, { status: 500 });
     }
 }

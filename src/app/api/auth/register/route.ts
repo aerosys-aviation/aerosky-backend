@@ -21,8 +21,7 @@ export async function POST(request: Request) {
 
         // Apply rate limiting (uses defaults)
         const limitResult = await localLoginLimiter.limit(email);
-        const success = typeof limitResult === 'object' && 'success' in limitResult ? limitResult.success : limitResult;
-        if (!success) {
+        if (!limitResult.success) {
             return NextResponse.json(
                 { error: "Too many registration attempts. Try again later." },
                 { status: 429 }

@@ -41,10 +41,10 @@ export async function GET(request: NextRequest) {
         });
 
         return NextResponse.json(tickets);
-    } catch (error: any) {
+    } catch (error) {
         console.error('Get support tickets error:', error);
         return NextResponse.json(
-            { error: 'Failed to get tickets', details: error.message },
+            { error: 'Failed to get tickets' },
             { status: 500 }
         );
     }
@@ -98,10 +98,10 @@ export async function POST(request: NextRequest) {
             ticket,
             message: 'Your support ticket has been created'
         });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Create support ticket error:', error);
         return NextResponse.json(
-            { error: 'Failed to create ticket', details: error.message },
+            { error: 'Failed to create ticket' },
             { status: 500 }
         );
     }

@@ -31,9 +31,11 @@ export const createTeamMemberSchema = z.object({
 
 export const createDroneSchema = z.object({
   modelName: z.string().min(1).max(100),
-  serialNumber: z.string().min(1),
-  purchaseDate: z.string().datetime().optional(),
-  status: z.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']).default('ACTIVE'),
+  image: z.string().optional(),
+  manufacturedUnits: z.array(z.object({
+    serialNumber: z.string().min(1),
+    uin: z.string().min(1),
+  })).optional(),
 });
 
 export const createComponentSchema = z.object({
@@ -56,7 +58,7 @@ export const createReimbursementSchema = z.object({
   category: z.string().optional(),
   amount: z.number().positive().max(1000000),
   date: z.string().datetime(),
-  billData: z.string().base64().max(5 * 1024 * 1024), // 5MB max
+  billData: z.string().max(5 * 1024 * 1024), // 5MB max
 });
 
 // Utility function to validate and return error

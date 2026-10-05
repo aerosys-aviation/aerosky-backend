@@ -72,10 +72,22 @@ export async function POST(request: NextRequest) {
         // Hash the new password
         const passwordHash = await bcrypt.hash(newPassword, 12);
 
-        // Update user password and organization phone in a transaction
+        // Update user password in a transaction — delete OTP records to prevent replay
         await prisma.$transaction(async (tx) => {
+            // Delete the OTP record FIRST to prevent replay attacks
+            // If this verification ID has already been consumed, the deleteMany below
+            // will delete 0 rows and we proceed (idempotent)
+            const deleteResult = await tx.otpVerification.deleteMany({
+                where: { id: verificationId },
+            });
+
+            // If the OTP record was already consumed (deleted), reject
+            if (deleteResult.count === 0) {
+                throw new Error('VERIFICATION_ALREADY_USED');
+            }
+
             // Find the user by email
-            let user = await tx.user.findFirst({
+            const user = await tx.user.findFirst({
                 where: {
                     OR: [
                         { email },
@@ -103,17 +115,26 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            // Delete all OTP records for this email
+            // Delete all remaining OTP records for this email
             await tx.otpVerification.deleteMany({
                 where: { email: otpRecord.email },
             });
         });
 
         return NextResponse.json({ success: true, message: 'Password updated successfully' });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Reset password error:', error);
+
+        // Handle known business logic errors without leaking internals
+        if (error instanceof Error && error.message === 'VERIFICATION_ALREADY_USED') {
+            return NextResponse.json(
+                { error: 'This verification has already been used. Please request a new OTP.' },
+                { status: 400 }
+            );
+        }
+
         return NextResponse.json(
-            { error: error.message || 'Failed to reset password' },
+            { error: 'Failed to reset password' },
             { status: 500 }
         );
     }

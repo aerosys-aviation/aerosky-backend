@@ -4,10 +4,10 @@ import jwt from 'jsonwebtoken';
 function getJwtSecret(): string {
     const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET;
     if (!secret) {
-        if (process.env.NODE_ENV === 'production') {
-            throw new Error('CRITICAL SECURITY ERROR: Neither JWT_SECRET nor NEXTAUTH_SECRET is defined in environment.');
-        }
-        return 'aerosky-dev-temporary-secret-key-replace-in-env';
+        throw new Error(
+            'CRITICAL SECURITY ERROR: Neither JWT_SECRET nor NEXTAUTH_SECRET is defined in environment. ' +
+            'Set one of these environment variables before starting the application.'
+        );
     }
     return secret;
 }
