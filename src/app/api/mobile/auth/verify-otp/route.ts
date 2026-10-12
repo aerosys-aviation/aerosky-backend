@@ -18,8 +18,7 @@ export async function POST(request: NextRequest) {
 
         // Apply rate limiting (prevents brute forcing 6-digit OTPs)
         const limitResult = await localLoginLimiter.limit(`verify-otp:${email}`);
-        const success = typeof limitResult === 'object' && 'success' in limitResult ? limitResult.success : limitResult;
-        if (!success) {
+        if (!limitResult.success) {
             return NextResponse.json(
                 { error: 'Too many verification attempts. Please try again later.' },
                 { status: 429 }
@@ -74,10 +73,10 @@ export async function POST(request: NextRequest) {
                 message: 'OTP verified successfully',
             }
         );
-    } catch (error: any) {
+    } catch (error) {
         console.error('Verify OTP error:', error);
         return NextResponse.json(
-            { error: 'Failed to verify OTP', details: error.message },
+            { error: 'Failed to verify OTP' },
             { status: 500 }
         );
     }

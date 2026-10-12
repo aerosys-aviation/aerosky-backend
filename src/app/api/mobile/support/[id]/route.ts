@@ -52,10 +52,10 @@ export async function GET(
         }
 
         return NextResponse.json(ticket);
-    } catch (error: any) {
+    } catch (error) {
         console.error('Get ticket error:', error);
         return NextResponse.json(
-            { error: 'Failed to get ticket', details: error.message },
+            { error: 'Failed to get ticket' },
             { status: 500 }
         );
     }
@@ -91,10 +91,10 @@ export async function PUT(
         });
 
         return NextResponse.json(ticket);
-    } catch (error: any) {
+    } catch (error) {
         console.error('Update ticket error:', error);
         return NextResponse.json(
-            { error: 'Failed to update ticket', details: error.message },
+            { error: 'Failed to update ticket' },
             { status: 500 }
         );
     }
@@ -123,10 +123,10 @@ export async function DELETE(
         });
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Delete ticket error:', error);
         return NextResponse.json(
-            { error: 'Failed to delete ticket', details: error.message },
+            { error: 'Failed to delete ticket' },
             { status: 500 }
         );
     }

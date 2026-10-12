@@ -2,22 +2,12 @@ import { authOptions } from "@/lib/auth";
 import { getTokenFromHeader, verifyToken } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
-import { Role } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextRequest } from 'next/server';
+import type { AuthenticatedUser, AuthResult } from '@/types/auth';
 
-// Type for authenticated user with role
-export interface AuthenticatedUser {
-    id: string;
-    username: string;
-    email?: string;
-    role: Role;
-}
-
-export interface AuthResult {
-    user: AuthenticatedUser;
-    type: 'session' | 'jwt';
-}
+// Re-export for backward compatibility
+export type { AuthenticatedUser, AuthResult };
 
 export async function authenticateRequest(request: NextRequest): Promise<AuthResult | null> {
     try {
@@ -28,20 +18,26 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthRes
         if (token) {
             // A. Try Supabase Auth Token verification
             try {
-                const { data: supabaseData, error: supabaseError } = await supabase.auth.getUser(token);
+                const { data: supabaseData } = await supabase.auth.getUser(token);
                 if (supabaseData?.user) {
                     const sbUser = supabaseData.user;
-                    let user = await prisma.user.findFirst({
+                    const user = await prisma.user.findFirst({
                         where: {
                             OR: [
                                 { supabaseId: sbUser.id },
                                 { email: { equals: sbUser.email, mode: 'insensitive' } },
                             ]
                         },
-                        select: { id: true, username: true, email: true, role: true, supabaseId: true }
+                        select: { id: true, username: true, email: true, role: true, supabaseId: true, isActive: true }
                     });
 
                     if (user) {
+                        // Reject deactivated users
+                        if (user.isActive === false) {
+                            console.warn(`[API Auth] Access denied: Account ${user.username} is deactivated.`);
+                            return null;
+                        }
+
                         if (!user.supabaseId) {
                             await prisma.user.update({
                                 where: { id: user.id },
@@ -98,18 +94,24 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthRes
                 if (userId) {
                     user = await prisma.user.findUnique({
                         where: { id: userId },
-                        select: { id: true, username: true, email: true, role: true }
+                        select: { id: true, username: true, email: true, role: true, isActive: true }
                     });
                 }
 
                 if (!user && decoded.username) {
                     user = await prisma.user.findUnique({
                         where: { username: decoded.username },
-                        select: { id: true, username: true, email: true, role: true }
+                        select: { id: true, username: true, email: true, role: true, isActive: true }
                     });
                 }
 
                 if (user) {
+                    // Reject deactivated users
+                    if (user.isActive === false) {
+                        console.warn(`[API Auth] Access denied: Account ${user.username} is deactivated.`);
+                        return null;
+                    }
+
                     return {
                         user: {
                             id: user.id,
@@ -131,25 +133,31 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthRes
             if ((session.user as any).id) {
                 user = await prisma.user.findUnique({
                     where: { id: (session.user as any).id },
-                    select: { id: true, username: true, email: true, role: true }
+                    select: { id: true, username: true, email: true, role: true, isActive: true }
                 });
             }
 
             if (!user && session.user.email) {
                 user = await prisma.user.findUnique({
                     where: { email: session.user.email },
-                    select: { id: true, username: true, email: true, role: true }
+                    select: { id: true, username: true, email: true, role: true, isActive: true }
                 });
             }
 
             if (!user && session.user.name) {
                 user = await prisma.user.findUnique({
                     where: { username: session.user.name },
-                    select: { id: true, username: true, email: true, role: true }
+                    select: { id: true, username: true, email: true, role: true, isActive: true }
                 });
             }
 
             if (user) {
+                // Reject deactivated users even for active sessions
+                if (user.isActive === false) {
+                    console.warn(`[API Auth] Access denied: Account ${user.username} is deactivated.`);
+                    return null;
+                }
+
                 return {
                     user: {
                         id: user.id,

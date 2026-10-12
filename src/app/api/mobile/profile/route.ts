@@ -150,22 +150,26 @@ export async function PATCH(request: NextRequest) {
 
         // Hash new password and update in a transaction
         await prisma.$transaction(async (tx) => {
-            // Validate OTP verification record
-            const otpRecord = await tx.otpVerification.findUnique({
-                where: { id: otpVerificationId },
+            // Delete OTP record first to prevent replay attacks
+            const deleteResult = await tx.otpVerification.deleteMany({
+                where: {
+                    id: otpVerificationId,
+                    verified: true,
+                    email: auth.user.email,
+                },
             });
 
-            if (!otpRecord || !otpRecord.verified || otpRecord.email !== auth.user.email) {
+            if (deleteResult.count === 0) {
                 throw new Error('Invalid or expired OTP verification');
             }
 
-            const newPasswordHash = await bcrypt.hash(newPassword, 10);
+            const newPasswordHash = await bcrypt.hash(newPassword, 12);
             await tx.user.update({
                 where: { id: auth.user.id },
                 data: { passwordHash: newPasswordHash }
             });
 
-            // Clean up all OTP records for this email
+            // Clean up all remaining OTP records for this email
             await tx.otpVerification.deleteMany({
                 where: { email: auth.user.email! },
             });
@@ -180,11 +184,12 @@ export async function PATCH(request: NextRequest) {
         }
 
         return NextResponse.json({ success: true, message: 'Password changed successfully' });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Change password error:', error);
+        const isOtpError = error instanceof Error && error.message === 'Invalid or expired OTP verification';
         return NextResponse.json(
-            { error: error.message || 'Failed to change password' },
-            { status: error.message === 'Invalid or expired OTP verification' ? 401 : 500 }
+            { error: isOtpError ? error.message : 'Failed to change password' },
+            { status: isOtpError ? 401 : 500 }
         );
     }
 }

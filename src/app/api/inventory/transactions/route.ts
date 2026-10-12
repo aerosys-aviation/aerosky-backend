@@ -117,7 +117,6 @@ export async function POST(request: NextRequest) {
         }
         return NextResponse.json({
             error: "Failed to process inventory transaction",
-            details: error.message || String(error)
         }, { status: 500 });
     }
 }

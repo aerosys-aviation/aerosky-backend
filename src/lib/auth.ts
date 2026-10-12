@@ -4,7 +4,7 @@ import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
-const providers: any[] = [
+const providers: NextAuthOptions['providers'] = [
     CredentialsProvider({
         name: "Credentials",
         credentials: {
@@ -52,7 +52,7 @@ export const authOptions: NextAuthOptions = {
         error: "/login",
     },
     callbacks: {
-        async signIn({ user, account, profile }: any) {
+        async signIn({ user, account, profile }) {
             if (account?.provider === "google") {
                 const email = (user.email || profile?.email)?.toLowerCase().trim();
                 if (!email) return false;
@@ -119,13 +119,13 @@ export const authOptions: NextAuthOptions = {
             }
             return true;
         },
-        async jwt({ token, user, account, trigger, session }: any) {
+        async jwt({ token, user, account, trigger, session }) {
             if (user) {
-                token.role = user.role;
+                token.role = (user as any).role;
                 token.id = user.id;
                 token.name = user.name;
-                token.supabaseId = user.supabaseId;
-                token.accessToken = user.accessToken;
+                token.supabaseId = (user as any).supabaseId;
+                token.accessToken = (user as any).accessToken;
             }
             if (trigger === "update") {
                 if (session?.name) {
@@ -133,7 +133,7 @@ export const authOptions: NextAuthOptions = {
                 }
                 if (token.id) {
                     const dbUser = await prisma.user.findUnique({
-                        where: { id: token.id },
+                        where: { id: token.id as string },
                         select: { fullName: true, username: true }
                     });
                     if (dbUser) {
@@ -146,8 +146,8 @@ export const authOptions: NextAuthOptions = {
                 const dbUser = await prisma.user.findFirst({
                     where: {
                         OR: [
-                            { email: { equals: token.email, mode: 'insensitive' } },
-                            { username: { equals: token.email, mode: 'insensitive' } }
+                            { email: { equals: token.email as string, mode: 'insensitive' } },
+                            { username: { equals: token.email as string, mode: 'insensitive' } }
                         ]
                     }
                 });
@@ -159,14 +159,14 @@ export const authOptions: NextAuthOptions = {
             }
             return token;
         },
-        async session({ session, token }: any) {
+        async session({ session, token }) {
             if (session.user) {
-                session.user.role = token.role;
-                session.user.id = token.id;
+                (session.user as any).role = token.role;
+                (session.user as any).id = token.id;
                 if (token.name) {
                     session.user.name = token.name;
                 }
-                session.user.supabaseId = token.supabaseId;
+                (session.user as any).supabaseId = token.supabaseId;
                 (session as any).accessToken = token.accessToken;
             }
             return session;

@@ -1,6 +1,7 @@
 import { authenticateRequest } from "@/lib/api-auth";
 import { checkResourceAccess } from "@/lib/authorize";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/mobile/expenses - Fetch expenses
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
         const category = searchParams.get('category');
         const status = searchParams.get('status');
 
-        const where: any = {};
+        const where: Prisma.ExpenseWhereInput = {};
 
         if (category) where.category = category;
         if (status) where.status = status;
@@ -66,16 +67,15 @@ export async function POST(request: NextRequest) {
                 date: new Date(date),
                 category,
                 paymentMethod: paymentMethod || null,
-                // @ts-ignore - Exists in schema but TS server hasn't updated
                 paymentStatus: paymentStatus || 'unpaid',
                 attachment: attachment || null,
             }
         });
 
         return NextResponse.json(expense, { status: 201 });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Mobile create expense error:', error);
-        return NextResponse.json({ error: "Failed to create expense", details: error.message }, { status: 500 });
+        return NextResponse.json({ error: "Failed to create expense" }, { status: 500 });
     }
 }
 
@@ -95,7 +95,7 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: "Expense ID is required" }, { status: 400 });
         }
 
-        const updateData: any = {};
+        const updateData: Prisma.ExpenseUpdateInput = {};
         if (description !== undefined) updateData.description = description;
         if (amount !== undefined) updateData.amount = parseFloat(amount);
         if (date !== undefined) updateData.date = new Date(date);
@@ -103,7 +103,7 @@ export async function PUT(request: NextRequest) {
         if (paymentMethod !== undefined) updateData.paymentMethod = paymentMethod;
         if (attachment !== undefined) updateData.attachment = attachment;
         if (status !== undefined) updateData.status = status;
-        if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;
+        if (paymentStatus !== undefined) (updateData as any).paymentStatus = paymentStatus;
 
         const expense = await prisma.expense.update({
             where: { id },
@@ -111,9 +111,9 @@ export async function PUT(request: NextRequest) {
         });
 
         return NextResponse.json(expense);
-    } catch (error: any) {
+    } catch (error) {
         console.error('Mobile update expense error:', error);
-        return NextResponse.json({ error: "Failed to update expense", details: error.message }, { status: 500 });
+        return NextResponse.json({ error: "Failed to update expense" }, { status: 500 });
     }
 }
 
@@ -136,8 +136,8 @@ export async function DELETE(request: NextRequest) {
         await prisma.expense.delete({ where: { id } });
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Mobile delete expense error:', error);
-        return NextResponse.json({ error: "Failed to delete expense", details: error.message }, { status: 500 });
+        return NextResponse.json({ error: "Failed to delete expense" }, { status: 500 });
     }
 }

@@ -107,6 +107,6 @@ export async function POST(request: NextRequest) {
         if (error.message?.startsWith("INSUFFICIENT_STOCK")) {
             return NextResponse.json({ error: error.message.replace("INSUFFICIENT_STOCK: ", "") }, { status: 400 });
         }
-        return NextResponse.json({ error: "Failed to process inventory transaction", details: error.message }, { status: 500 });
+        return NextResponse.json({ error: "Failed to process inventory transaction" }, { status: 500 });
     }
 }

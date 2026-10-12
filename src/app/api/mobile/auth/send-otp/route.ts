@@ -65,10 +65,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
             { success: true, message: 'OTP sent to your email' }
         );
-    } catch (error: any) {
+    } catch (error) {
         console.error('Send OTP error:', error);
         return NextResponse.json(
-            { error: 'Failed to send OTP', details: error.message },
+            { error: 'Failed to send OTP' },
             { status: 500 }
         );
     }

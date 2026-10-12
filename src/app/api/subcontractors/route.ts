@@ -12,10 +12,7 @@ export async function GET(request: NextRequest) {
     if (permCheck !== true) return permCheck;
 
     try {
-        const where: any = {};
-
         const subcontractors = await prisma.subcontractor.findMany({
-            where,
             orderBy: { createdAt: "desc" },
         });
         return NextResponse.json(subcontractors);
@@ -49,11 +46,10 @@ export async function POST(request: NextRequest) {
         });
 
         return NextResponse.json(subcontractor, { status: 201 });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Create subcontractor error:', error);
         return NextResponse.json({
             error: "Failed to create subcontractor",
-            details: error.message || String(error)
         }, { status: 500 });
     }
 }

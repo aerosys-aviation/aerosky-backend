@@ -18,6 +18,22 @@ const DEFAULT_ALLOWED_ORIGINS = {
     ],
 };
 
+// Paths that bypass NextAuth session checks (extracted to avoid duplication)
+const PUBLIC_PATHS = [
+    "/api/mobile",
+    "/api/auth",
+    "/unauthorized",
+    "/login",
+    "/register",
+    "/forgot-password"
+];
+
+function isPublicPath(pathname: string): boolean {
+    return PUBLIC_PATHS.some(path =>
+        pathname === path || pathname.startsWith(`${path}/`)
+    );
+}
+
 function isOriginAllowed(origin: string | null): boolean {
     if (!origin) return false;
 
@@ -58,42 +74,15 @@ function isOriginAllowed(origin: string | null): boolean {
 // 1. Wrap NextAuth logic
 const authMiddleware = withAuth(
     function middleware(req: NextRequestWithAuth) {
-        // Skip NextAuth cookie check for mobile routes, auth endpoints, and public pages
-        const publicPaths = [
-            "/api/mobile",
-            "/api/auth",
-            "/api/reimbursements",
-            "/unauthorized",
-            "/login",
-            "/register",
-            "/forgot-password"
-        ];
-        const isPublicPath = publicPaths.some(path =>
-            req.nextUrl.pathname === path || req.nextUrl.pathname.startsWith(`${path}/`)
-        );
-
-        if (isPublicPath) {
+        if (isPublicPath(req.nextUrl.pathname)) {
             return NextResponse.next();
         }
-
         return NextResponse.next();
     },
     {
         callbacks: {
             authorized: ({ token, req }: { token: any; req: NextRequest }) => {
-                const publicPaths = [
-                    "/api/mobile",
-                    "/api/auth",
-                    "/api/reimbursements",
-                    "/unauthorized",
-                    "/login",
-                    "/register",
-                    "/forgot-password"
-                ];
-                const isPublicPath = publicPaths.some(path =>
-                    req.nextUrl.pathname === path || req.nextUrl.pathname.startsWith(`${path}/`)
-                );
-                if (isPublicPath) return true;
+                if (isPublicPath(req.nextUrl.pathname)) return true;
                 return !!token;
             },
         },

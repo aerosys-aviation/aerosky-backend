@@ -1,16 +1,12 @@
-import { User, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { supabase } from '@/lib/supabase';
 import { signToken, verifyToken as verifyTokenUtil } from '@/lib/jwt';
+import type { AuthenticatedUser } from '@/types/auth';
 
-export interface AuthenticatedUser {
-  id: string;
-  username: string;
-  fullName?: string;
-  email?: string;
-  role: Role;
-}
+// Re-export the shared type for backward compatibility
+export type { AuthenticatedUser };
 
 export class AuthService {
   // Authenticate with credentials via Supabase Auth (with DB bcrypt fallback)
@@ -54,6 +50,12 @@ export class AuthService {
         });
 
         if (user) {
+          // Check if account is active
+          if (user.isActive === false) {
+            console.warn(`[Auth] Login denied: Account for ${rawUser} is deactivated.`);
+            return null;
+          }
+
           if (!user.supabaseId) {
             await prisma.user.update({
               where: { id: user.id },
@@ -103,6 +105,12 @@ export class AuthService {
     });
 
     if (user && user.passwordHash) {
+      // Check if account is active before verifying password
+      if (user.isActive === false) {
+        console.warn(`[Auth] Login denied: Account for ${rawUser} is deactivated.`);
+        return null;
+      }
+
       const isValid = await bcrypt.compare(password, user.passwordHash);
       if (isValid) {
         return {
@@ -146,6 +154,7 @@ export class AuthService {
           }
         });
         if (user) {
+          if (user.isActive === false) return null;
           return {
             id: user.id,
             username: user.username,
@@ -157,20 +166,27 @@ export class AuthService {
       }
 
       // 2. Legacy JWT
-      const decoded = verifyTokenUtil(token) as any;
+      const decoded = verifyTokenUtil(token) as { userId?: string; id?: string; username?: string; sub?: string } | null;
       if (!decoded) return null;
       
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id || decoded.userId },
-        select: {
-          id: true,
-          username: true,
-          fullName: true,
-          email: true,
-          role: true,
-        },
-      });
-      if (!user) return null;
+      const userId = decoded.userId || decoded.id || decoded.sub;
+      let user = null;
+
+      if (userId) {
+        user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, username: true, fullName: true, email: true, role: true, isActive: true },
+        });
+      }
+
+      if (!user && decoded.username) {
+        user = await prisma.user.findUnique({
+          where: { username: decoded.username },
+          select: { id: true, username: true, fullName: true, email: true, role: true, isActive: true },
+        });
+      }
+
+      if (!user || user.isActive === false) return null;
 
       return {
         id: user.id,
@@ -197,11 +213,10 @@ export class AuthService {
   generateJwt(user: AuthenticatedUser): string {
     return signToken({
       userId: user.id,
-      id: user.id,
       username: user.username,
       fullName: user.fullName,
       role: user.role,
-    } as any);
+    });
   }
 }
 

@@ -1,5 +1,6 @@
 import { authenticateRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
 
-        const where: any = {};
+        const where: Prisma.ReimbursementWhereInput = {};
 
         // Filtering: privileged roles (SUPER_ADMIN, ADMIN, ADMINISTRATION) can see all
         // Regular users can only see their own
@@ -79,11 +80,10 @@ export async function POST(request: NextRequest) {
         });
 
         return NextResponse.json(reimbursement, { status: 201 });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Create reimbursement error:', error);
         return NextResponse.json({
             error: "Failed to submit reimbursement",
-            details: error.message
         }, { status: 500 });
     }
 }
@@ -118,11 +118,10 @@ export async function PATCH(request: NextRequest) {
         });
 
         return NextResponse.json({ success: true, status: reimbursement.status });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Update reimbursement status error:', error);
         return NextResponse.json({
             error: 'Failed to update status',
-            details: error.message
         }, { status: 500 });
     }
 }

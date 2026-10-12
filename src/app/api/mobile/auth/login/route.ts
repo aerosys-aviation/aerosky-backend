@@ -5,7 +5,6 @@ import { handleError, errors } from '@/lib/error-handler';
 import { prisma } from '@/lib/prisma';
 import { supabase } from '@/lib/supabase';
 import { signToken } from '@/lib/jwt';
-import bcrypt from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -25,146 +24,85 @@ export async function POST(request: NextRequest) {
 
         // Apply rate limiting
         const limitResult = await localLoginLimiter.limit(loginId);
-        const success = typeof limitResult === 'object' && 'success' in limitResult ? limitResult.success : limitResult;
-
-        if (!success) {
+        if (!limitResult.success) {
             return NextResponse.json(
                 {
                     error: 'TOO_MANY_ATTEMPTS',
-                    message: `Too many login attempts. Try again later.`,
+                    message: 'Too many login attempts. Try again later.',
                 },
                 { status: 429 }
             );
         }
 
-        // 1. Resolve email for Supabase Auth
-        let emailToAuth = loginId;
-        if (!loginId.includes('@')) {
-            const existingDbUser = await prisma.user.findFirst({
-                where: {
-                    OR: [
-                        { username: { equals: loginId, mode: 'insensitive' } },
-                        { email: { equals: loginId, mode: 'insensitive' } }
-                    ]
-                }
-            });
-            if (existingDbUser?.email) {
-                emailToAuth = existingDbUser.email;
-            }
+        // Use the consolidated AuthService for credential verification
+        const authenticatedUser = await authService.authenticateWithCredentials(loginId, password);
+
+        if (!authenticatedUser) {
+            return NextResponse.json(
+                { error: 'Invalid credentials' },
+                { status: 401 }
+            );
         }
 
-        // 2. Try Supabase Auth
-        let authUser: any = null;
-        let supabaseSession: any = null;
+        // Try to get a Supabase session for the token (preferred for mobile)
+        let token: string;
+        let refreshToken: string | undefined;
+
+        // Resolve email for Supabase session
+        let emailToAuth = loginId;
+        if (!loginId.includes('@') && authenticatedUser.email) {
+            emailToAuth = authenticatedUser.email;
+        }
 
         try {
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            const { data: authData } = await supabase.auth.signInWithPassword({
                 email: emailToAuth,
                 password,
             });
-            if (authData?.user && authData?.session) {
-                authUser = authData.user;
-                supabaseSession = authData.session;
-            }
-        } catch (err: any) {
-            console.warn('Supabase mobile signin attempt:', err);
-        }
+            if (authData?.session) {
+                token = authData.session.access_token;
+                refreshToken = authData.session.refresh_token;
 
-        let user: any = null;
-
-        // 3. Process Supabase User if successful
-        if (authUser) {
-            user = await prisma.user.findFirst({
-                where: {
-                    OR: [
-                        { supabaseId: authUser.id },
-                        { email: { equals: authUser.email, mode: 'insensitive' } },
-                        { username: { equals: loginId, mode: 'insensitive' } }
-                    ]
-                }
-            });
-
-            if (user) {
-                if (!user.supabaseId) {
-                    user = await prisma.user.update({
-                        where: { id: user.id },
-                        data: { supabaseId: authUser.id }
+                // Link Supabase ID if needed
+                if (authData.user && authenticatedUser.id) {
+                    const existingUser = await prisma.user.findUnique({
+                        where: { id: authenticatedUser.id },
+                        select: { supabaseId: true }
                     });
+                    if (existingUser && !existingUser.supabaseId) {
+                        await prisma.user.update({
+                            where: { id: authenticatedUser.id },
+                            data: { supabaseId: authData.user.id }
+                        });
+                    }
                 }
             } else {
-                const teamMember = authUser.email ? await prisma.teamMember.findFirst({
-                    where: { email: { equals: authUser.email, mode: 'insensitive' } }
-                }) : null;
-
-                user = await prisma.user.create({
-                    data: {
-                        username: authUser.email?.split('@')[0] || loginId,
-                        email: authUser.email,
-                        fullName: authUser.user_metadata?.full_name || authUser.user_metadata?.name || loginId,
-                        supabaseId: authUser.id,
-                        role: 'VIEWER',
-                        teamMemberId: teamMember ? teamMember.id : undefined,
-                    }
+                // Supabase session not available, issue legacy JWT
+                token = signToken({
+                    userId: authenticatedUser.id,
+                    username: authenticatedUser.username,
+                    fullName: authenticatedUser.fullName,
+                    role: authenticatedUser.role,
                 });
             }
-
-            return NextResponse.json({
-                token: supabaseSession.access_token,
-                refreshToken: supabaseSession.refresh_token,
-                user: {
-                    id: user.id,
-                    email: user.email || user.username,
-                    fullName: user.fullName || user.username,
-                    role: user.role,
-                }
+        } catch {
+            // Supabase auth failed, issue legacy JWT
+            token = signToken({
+                userId: authenticatedUser.id,
+                username: authenticatedUser.username,
+                fullName: authenticatedUser.fullName,
+                role: authenticatedUser.role,
             });
         }
-
-        // 4. Fallback: Database bcrypt password verification
-        user = await prisma.user.findFirst({
-            where: {
-                OR: [
-                    { username: { equals: loginId, mode: 'insensitive' } },
-                    { email: { equals: loginId, mode: 'insensitive' } },
-                    { email: { equals: emailToAuth, mode: 'insensitive' } }
-                ]
-            }
-        });
-
-        if (!user) {
-            return NextResponse.json(
-                { error: 'Invalid credentials' },
-                { status: 401 }
-            );
-        }
-
-        let isValid = false;
-        if (user.passwordHash) {
-            isValid = await bcrypt.compare(password, user.passwordHash);
-        }
-
-        if (!isValid) {
-            return NextResponse.json(
-                { error: 'Invalid credentials' },
-                { status: 401 }
-            );
-        }
-
-        // Issue JWT token
-        const token = signToken({
-            userId: user.id,
-            username: user.username,
-            fullName: user.fullName || undefined,
-            role: user.role,
-        });
 
         return NextResponse.json({
             token,
+            ...(refreshToken && { refreshToken }),
             user: {
-                id: user.id,
-                email: user.email || user.username,
-                fullName: user.fullName || user.username,
-                role: user.role,
+                id: authenticatedUser.id,
+                email: authenticatedUser.email || authenticatedUser.username,
+                fullName: authenticatedUser.fullName || authenticatedUser.username,
+                role: authenticatedUser.role,
             }
         });
 

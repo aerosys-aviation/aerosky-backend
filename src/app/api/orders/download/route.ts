@@ -297,8 +297,8 @@ export async function GET(request: NextRequest) {
                 'Content-Disposition': `attachment; filename="OrderBook_${new Date().toISOString().split('T')[0]}.xlsx"`,
             },
         });
-    } catch (error: any) {
+    } catch (error) {
         console.error('General Download Error:', error);
-        return NextResponse.json({ error: 'Failed to generate download', message: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to generate download' }, { status: 500 });
     }
 }

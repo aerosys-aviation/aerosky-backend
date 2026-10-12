@@ -102,10 +102,10 @@ export async function GET(request: NextRequest) {
                 totalPages: Math.ceil(totalCount / limit) || 1,
             }
         });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error fetching administrative reports:", error);
         return NextResponse.json(
-            { error: error?.message || "Failed to fetch reports. Please try again later." },
+            { error: "Failed to fetch reports. Please try again later." },
             { status: 500 }
         );
     }
@@ -187,13 +187,10 @@ export async function POST(request: NextRequest) {
             message: "Report created successfully.",
             report: newReport
         }, { status: 201 });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error creating administrative report:", error);
         return NextResponse.json(
-            { 
-                error: error?.message || "Failed to create report. Please try again.",
-                details: error?.stack
-            },
+            { error: "Failed to create report. Please try again." },
             { status: 500 }
         );
     }
