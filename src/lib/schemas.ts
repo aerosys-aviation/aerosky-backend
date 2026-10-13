@@ -32,6 +32,8 @@ export const createTeamMemberSchema = z.object({
 export const createDroneSchema = z.object({
   modelName: z.string().min(1).max(100),
   image: z.string().optional(),
+  webPortalLink: z.string().optional().nullable(),
+  isDgcaCertified: z.boolean().optional(),
   manufacturedUnits: z.array(z.object({
     serialNumber: z.string().min(1),
     uin: z.string().min(1),

@@ -58,7 +58,7 @@ export async function GET(
         return NextResponse.json({
             id: drone.id,
             modelName: drone.modelName,
-            // uin: drone.uin, // Removed
+            isDgcaCertified: Boolean(drone.isDgcaCertified),
             image: drone.image,
             accountableManagerId: drone.accountableManagerId,
             createdAt: drone.createdAt.toISOString(),
@@ -90,7 +90,7 @@ export async function PUT(
     try {
         const { id } = await params;
         const body = await request.json();
-        const { modelName, image, accountableManagerId, webPortalLink, manufacturedUnits, recurringData } = body;
+        const { modelName, image, accountableManagerId, webPortalLink, manufacturedUnits, recurringData, isDgcaCertified } = body;
 
         const drone = await prisma.drone.update({
             where: { id },
@@ -100,6 +100,7 @@ export async function PUT(
                 accountableManagerId,
                 webPortalLink,
                 recurringData,
+                isDgcaCertified: isDgcaCertified !== undefined ? Boolean(isDgcaCertified) : undefined,
                 ...(manufacturedUnits && {
                     manufacturedUnits: {
                         deleteMany: {},

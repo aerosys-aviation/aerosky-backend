@@ -60,6 +60,7 @@ export async function GET(
         const transformedDrone = {
             id: drone.id,
             modelName: drone.modelName,
+            isDgcaCertified: Boolean(drone.isDgcaCertified),
             image: drone.image,
             accountableManagerId: drone.accountableManagerId,
             createdAt: drone.createdAt.toISOString(),
@@ -102,7 +103,7 @@ export async function PUT(
         }
 
         const body = await request.json();
-        const { modelName, image, accountableManagerId, webPortalLink, manufacturedUnits, recurringData } = body;
+        const { modelName, image, accountableManagerId, webPortalLink, manufacturedUnits, recurringData, isDgcaCertified } = body;
 
         // Start transaction for updates
         const updatedDrone = await prisma.$transaction(async (tx) => {
@@ -115,6 +116,7 @@ export async function PUT(
                     accountableManagerId: accountableManagerId !== undefined ? accountableManagerId : undefined,
                     webPortalLink: webPortalLink !== undefined ? webPortalLink : undefined,
                     recurringData: recurringData !== undefined ? recurringData : undefined,
+                    isDgcaCertified: isDgcaCertified !== undefined ? Boolean(isDgcaCertified) : undefined,
                 },
                 include: {
                     uploads: true,

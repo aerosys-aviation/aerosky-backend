@@ -89,6 +89,21 @@ export default function DronesPage() {
         }
     }
 
+    const handleToggleCertification = async (id: string, currentStatus?: boolean) => {
+        try {
+            const res = await fetch(`/api/mobile/drones/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isDgcaCertified: !currentStatus })
+            })
+            if (res.ok) {
+                setDrones(prev => prev.map(d => d.id === id ? { ...d, isDgcaCertified: !currentStatus } : d))
+            }
+        } catch (error) {
+            console.error('Failed to toggle certification status:', error)
+        }
+    }
+
     const filteredDrones = drones.filter(d =>
         d.modelName.toLowerCase().includes(searchTerm.toLowerCase())
     )
@@ -110,7 +125,10 @@ export default function DronesPage() {
                     <h1 className="text-3xl lg:text-5xl font-black text-slate-900 tracking-tightest">Aerial <span className="text-slate-400 font-medium">Assets</span></h1>
                 </div>
                 <button
-                    onClick={() => setShowModal(true)}
+                    onClick={() => {
+                        setFormData({ modelName: '', webPortalLink: '', isDgcaCertified: false });
+                        setShowModal(true);
+                    }}
                     className="w-full md:w-auto btn-premium-primary !py-3.5 lg:!py-4 shadow-2xl shadow-orange-500/10 group"
                 >
                     <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" />
@@ -181,15 +199,25 @@ export default function DronesPage() {
                                     {drone.modelName}
                                 </h3>
                                 <div className="flex items-center gap-2 mt-2">
-                                    {drone.isDgcaCertified ? (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                            <ShieldCheck className="w-3.5 h-3.5" /> DGCA Certified
-                                        </span>
-                                    ) : (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                            <AlertTriangle className="w-3.5 h-3.5" /> Pending Certification
-                                        </span>
-                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleToggleCertification(drone.id, drone.isDgcaCertified)
+                                        }}
+                                        title="Click to toggle DGCA certification status"
+                                        className="transition-transform active:scale-95 text-left"
+                                    >
+                                        {drone.isDgcaCertified ? (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors">
+                                                <ShieldCheck className="w-3.5 h-3.5" /> DGCA Certified
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors">
+                                                <AlertTriangle className="w-3.5 h-3.5" /> Pending Certification
+                                            </span>
+                                        )}
+                                    </button>
                                 </div>
                             </div>
 

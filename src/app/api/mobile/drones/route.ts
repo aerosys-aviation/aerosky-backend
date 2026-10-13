@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
             return {
                 id: drone.id,
                 modelName: drone.modelName,
+                isDgcaCertified: Boolean(drone.isDgcaCertified),
                 image: drone.image,
                 accountableManagerId: drone.accountableManagerId,
                 createdAt: drone.createdAt.toISOString(),
@@ -89,13 +90,14 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { modelName, image, manufacturedUnits, isDgcaCertified } = body;
+        const { modelName, image, manufacturedUnits, isDgcaCertified, webPortalLink } = body;
 
         const drone = await prisma.drone.create({
             data: {
                 modelName,
                 image,
-                isDgcaCertified: (isDgcaCertified || false) as any,
+                webPortalLink: webPortalLink || null,
+                isDgcaCertified: Boolean(isDgcaCertified),
                 manufacturedUnits: {
                     create: (manufacturedUnits || []).map((unit: any) => ({
                         serialNumber: unit.serialNumber,
